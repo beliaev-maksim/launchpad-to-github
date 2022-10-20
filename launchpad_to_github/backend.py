@@ -1,3 +1,4 @@
+import click
 from github.Repository import Repository
 
 from launchpad_to_github.gh_issue_template import gh_issue_template
@@ -35,11 +36,15 @@ def get_lp_bug(launchpad, bug_number):
 
 def get_lp_project_bug_tasks(launchpad, project_name, statuses=LP_STATUSES, tags=(), reporter=""):
     if not_allowed := set(statuses) - set(LP_STATUSES):
-        raise ValueError(f"Following statuses are not allowed: {not_allowed}. Please choose from {LP_STATUSES}")
+        raise ValueError(
+            f"Following statuses are not allowed: {not_allowed}. Please choose from {LP_STATUSES}"
+        )
 
     lp_project = launchpad.projects[project_name]
     bug_reporter = f"https://api.launchpad.net/devel/~{reporter}" if reporter else None
-    project_bug_tasks = lp_project.searchTasks(status=list(statuses), tags=list(tags), bug_reporter=bug_reporter)
+    project_bug_tasks = lp_project.searchTasks(
+        status=list(statuses), tags=list(tags), bug_reporter=bug_reporter
+    )
 
     return project_bug_tasks
 
@@ -49,7 +54,9 @@ def construct_bugs_from_tasks(launchpad, lp_tasks):
     for task in lp_tasks:
         lp_bug = launchpad.load(task.bug_link)
         attachments_collection = lp_bug.attachments
-        attachments = [Attachment(name=att.title, url=att.data_link) for att in attachments_collection]
+        attachments = [
+            Attachment(name=att.title, url=att.data_link) for att in attachments_collection
+        ]
         messages = [
             Message(
                 author_link=msg.owner_link,
@@ -95,10 +102,15 @@ def check_labels(repo: Repository):
         raise ValueError("Please add label 'FromLaunchpad' to repository")
 
 
-def create_gh_issue(bug: Bug, repo: Repository, apply_labels: bool = False):
+def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issue_titles=list[str]):
     attachments = "\n".join([f"[{att.name}]({att.url})" for att in bug.attachments])
 
-    title = f"LP{bug.web_link.split('/')[-1]}: {bug.title}"
+    lp_bug_number = bug.web_link.split("/")[-1]
+    title = f"LP{lp_bug_number}: {bug.title}"
+    if any([f"LP{lp_bug_number}" in title for title in issue_titles]):
+        click.echo(f"Bug with number LP{lp_bug_number} is already added.")
+        return
+
     body = gh_issue_template.format(
         status=bug.status,
         created_on=bug.date_created.strftime("%Y-%m-%d %H:%M:%S"),
