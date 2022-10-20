@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from lazr.restfulclient.resource import Collection
+from lazr.restfulclient.resource import Entry
 from pydantic import BaseModel
 
 
@@ -29,6 +30,8 @@ class Bug(BaseModel):
     tags: list
     title: str
     web_link: str
+    original_task: Entry
+    original_bug: Entry
 
     class Config:
         arbitrary_types_allowed = True

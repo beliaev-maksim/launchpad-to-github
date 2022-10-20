@@ -35,6 +35,9 @@ def get_lp_bug(bug_number):
 
 
 def get_lp_project_bug_tasks(project_name, statuses=LP_STATUSES, tags=(), reporter=""):
+    if not_allowed := set(statuses) - set(LP_STATUSES):
+        raise ValueError(f"Following statuses are not allowed: {not_allowed}. Please choose from {LP_STATUSES}")
+
     lp_project = launchpad.projects[project_name]
     bug_reporter = f"https://api.launchpad.net/devel/~{reporter}" if reporter else None
     project_bug_tasks = lp_project.searchTasks(status=list(statuses), tags=list(tags), bug_reporter=bug_reporter)
@@ -45,7 +48,7 @@ def get_lp_project_bug_tasks(project_name, statuses=LP_STATUSES, tags=(), report
 def construct_bugs_from_tasks(lp_tasks):
     bugs = []
     for task in lp_tasks:
-        lp_bug = get_lp_bug(int(task.web_link.split("/")[-1]))
+        lp_bug = launchpad.load(task.bug_link)
         attachments_collection = lp_bug.attachments
         attachments = [Attachment(name=att.title, url=att.data_link) for att in attachments_collection]
         messages = [Message(author=m.owner_link, content=m.content) for m in lp_bug.messages]
@@ -64,6 +67,8 @@ def construct_bugs_from_tasks(lp_tasks):
             tags=lp_bug.tags,
             title=lp_bug.title,
             web_link=task.web_link,
+            original_task=task,
+            original_bug=lp_bug,
         )
         bugs.append(bug)
 
@@ -71,10 +76,6 @@ def construct_bugs_from_tasks(lp_tasks):
 
 
 if __name__ == "__main__":
-    bug_tasks = get_lp_project_bug_tasks("checkbox-project", statuses=("New",))
+    bug_tasks = get_lp_project_bug_tasks("checkbox-project", statuses=("Opinion",))
     for i in construct_bugs_from_tasks(bug_tasks):
         print(i)
-        # print(bug.title)
-    # bug = get_lp_bug(1974197)
-    # bug = get_lp_bug(830949)
-    # print(bug.bug_reporter)
