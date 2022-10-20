@@ -12,6 +12,7 @@ class Attachment(BaseModel):
 
 class Message(BaseModel):
     author: str
+    author_link: str
     content: str
     date_created: datetime
 

@@ -57,8 +57,15 @@ def construct_bugs_from_tasks(lp_tasks):
         attachments_collection = lp_bug.attachments
         attachments = [Attachment(name=att.title, url=att.data_link) for att in attachments_collection]
         messages = [
-            Message(author=m.owner_link, content=m.content, date_created=m.date_created) for m in lp_bug.messages
+            Message(
+                author_link=m.owner_link,
+                author=m.owner_link.split("~")[-1],
+                content=m.content,
+                date_created=m.date_created,
+            )
+            for m in lp_bug.messages
         ]
+
         bug = Bug(
             assignee_link=task.assignee_link,
             attachments=attachments,
@@ -108,7 +115,8 @@ def create_gh_issue(bug: Bug, repo_name):
             if not m.content:
                 continue
 
-            body += f"##### {m.author} wrote on {m.date_created.strftime('%Y-%m-%d %H:%M:%S')}:\n{m.content}\n\n"
+            date = m.date_created.strftime("%Y-%m-%d %H:%M:%S")
+            body += f"##### https://launchpad.net/~{m.author} wrote on {date}:\n{m.content}\n\n"
 
         issue.create_comment(body=body)
 
