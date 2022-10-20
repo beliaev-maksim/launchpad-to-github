@@ -58,12 +58,12 @@ def construct_bugs_from_tasks(lp_tasks):
         attachments = [Attachment(name=att.title, url=att.data_link) for att in attachments_collection]
         messages = [
             Message(
-                author_link=m.owner_link,
-                author=m.owner_link.split("~")[-1],
-                content=m.content,
-                date_created=m.date_created,
+                author_link=msg.owner_link,
+                author=msg.owner_link.split("~")[-1],
+                content=msg.content,
+                date_created=msg.date_created,
             )
-            for m in lp_bug.messages
+            for msg in lp_bug.messages
         ]
 
         bug = Bug(
@@ -111,12 +111,12 @@ def create_gh_issue(bug: Bug, repo_name):
     if len(bug.messages) >= 2:
         body = "This thread was migrated from launchpad.net\n"
 
-        for m in bug.messages[1:]:
-            if not m.content:
+        for msg in bug.messages[1:]:
+            if not msg.content:
                 continue
 
-            date = m.date_created.strftime("%Y-%m-%d %H:%M:%S")
-            body += f"##### https://launchpad.net/~{m.author} wrote on {date}:\n{m.content}\n\n"
+            date = msg.date_created.strftime("%Y-%m-%d %H:%M:%S")
+            body += f"##### https://launchpad.net/~{msg.author} wrote on {date}:\n{msg.content}\n\n"
 
         issue.create_comment(body=body)
 
