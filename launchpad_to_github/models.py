@@ -13,6 +13,7 @@ class Attachment(BaseModel):
 class Message(BaseModel):
     author: str
     content: str
+    date_created: datetime
 
 
 class Bug(BaseModel):

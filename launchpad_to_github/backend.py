@@ -1,5 +1,9 @@
+import os
+
+from github import Github
 from launchpadlib.launchpad import Launchpad
 
+from launchpad_to_github.gh_issue_template import gh_issue_template
 from launchpad_to_github.models import Attachment
 from launchpad_to_github.models import Bug
 from launchpad_to_github.models import Message
@@ -24,6 +28,7 @@ LP_STATUSES = (
 )
 
 launchpad = Launchpad.login_anonymously("migration lp-gh", "production", cachedir, version="devel")
+github = Github(os.getenv("GH_TOKEN"))
 
 
 def get_lp_bug(bug_number):
@@ -51,7 +56,9 @@ def construct_bugs_from_tasks(lp_tasks):
         lp_bug = launchpad.load(task.bug_link)
         attachments_collection = lp_bug.attachments
         attachments = [Attachment(name=att.title, url=att.data_link) for att in attachments_collection]
-        messages = [Message(author=m.owner_link, content=m.content) for m in lp_bug.messages]
+        messages = [
+            Message(author=m.owner_link, content=m.content, date_created=m.date_created) for m in lp_bug.messages
+        ]
         bug = Bug(
             assignee_link=task.assignee_link,
             attachments=attachments,
@@ -70,9 +77,40 @@ def construct_bugs_from_tasks(lp_tasks):
             original_task=task,
             original_bug=lp_bug,
         )
+        create_gh_issue(bug, "beliaev-maksim/test_repo_for_issues")
         bugs.append(bug)
 
     return bugs
+
+
+def create_gh_issue(bug: Bug, repo_name):
+    repo = github.get_repo(repo_name)
+    attachments = "\n".join([f"[{att.name}]({att.url})" for att in bug.attachments])
+
+    title = f"LP{bug.web_link.split('/')[-1]}: {bug.title}"
+    body = gh_issue_template.format(
+        status=bug.status,
+        created_on=bug.date_created.strftime("%Y-%m-%d %H:%M:%S"),
+        heat=bug.heat,
+        importance=bug.importance,
+        security=bug.security_related,
+        description=bug.description,
+        attachments=attachments or "No attachments",
+        tags=bug.tags,
+        bug_link=bug.web_link,
+    )
+    issue = repo.create_issue(title, body=body)
+
+    if len(bug.messages) >= 2:
+        body = "This thread was migrated from launchpad.net\n"
+
+        for m in bug.messages[1:]:
+            if not m.content:
+                continue
+
+            body += f"##### {m.author} wrote on {m.date_created.strftime('%Y-%m-%d %H:%M:%S')}:\n{m.content}\n\n"
+
+        issue.create_comment(body=body)
 
 
 if __name__ == "__main__":

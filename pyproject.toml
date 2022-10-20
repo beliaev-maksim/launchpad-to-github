@@ -13,7 +13,8 @@ dynamic = ["version", "description"]
 dependencies = [
     "launchpadlib",
     "click",
-    "pydantic"
+    "pydantic",
+    "pygithub"
 ]
 
 # development dependencies
