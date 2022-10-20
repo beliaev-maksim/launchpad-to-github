@@ -1,6 +1,7 @@
 import os
 
 from github import Github
+from github.Repository import Repository
 from launchpadlib.launchpad import Launchpad
 
 from launchpad_to_github.gh_issue_template import gh_issue_template
@@ -84,13 +85,21 @@ def construct_bugs_from_tasks(lp_tasks):
             original_task=task,
             original_bug=lp_bug,
         )
-        create_gh_issue(bug, "beliaev-maksim/test_repo_for_issues")
         bugs.append(bug)
 
     return bugs
 
 
-def create_gh_issue(bug: Bug, repo_name):
+def check_labels(repo: Repository):
+    labels = repo.get_labels()
+    if "Important" not in labels:
+        raise ValueError("Please add label 'Important' to repository")
+
+    if "Security" not in labels:
+        raise ValueError("Please add label 'Security' to repository")
+
+
+def create_gh_issue(bug: Bug, repo_name: str, apply_labels=False):
     repo = github.get_repo(repo_name)
     attachments = "\n".join([f"[{att.name}]({att.url})" for att in bug.attachments])
 
@@ -106,7 +115,17 @@ def create_gh_issue(bug: Bug, repo_name):
         tags=bug.tags,
         bug_link=bug.web_link,
     )
-    issue = repo.create_issue(title, body=body)
+
+    labels = []
+    if apply_labels:
+        check_labels(repo)
+        if bug.importance.lower() in ["high", "critical"]:
+            labels.append("Important")
+
+        if bug.security_related:
+            labels.append("Security")
+
+    issue = repo.create_issue(title, body=body, labels=labels)
 
     if len(bug.messages) >= 2:
         body = "This thread was migrated from launchpad.net\n"
