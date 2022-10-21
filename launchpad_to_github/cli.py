@@ -43,6 +43,7 @@ cachedir = "~/.launchpadlib/cache/"
     help="Filter bugs by reporter username.",
 )
 @click.option("--gh-token", envvar="GH_TOKEN", help="GitHub API token")
+@click.option("--dry-run", is_flag=True, help="Show which bugs will be migrated.")
 def migrate_bugs(
     gh_repo_name,
     labels,
@@ -52,6 +53,7 @@ def migrate_bugs(
     filter_tag,
     filter_reporter,
     gh_token,
+    dry_run,
 ):
     if not gh_token:
         raise EnvironmentError(
@@ -78,7 +80,25 @@ def migrate_bugs(
     bugs = construct_bugs_from_tasks(launchpad, project_bug_tasks)
 
     issue_titles = [i.title for i in repo.get_issues()]
+    click.echo(f"Start migrating bugs to {repo.html_url}")
+    if dry_run:
+        if change_lp_status != "null":
+            click.secho(f"Bugs will be closed with following status: {change_lp_status}", fg="red")
+        else:
+            click.secho(
+                (
+                    "Bugs status in launchpad will be unchanged. "
+                    "If not desired, set --change-lp-status"
+                ),
+                fg="red",
+            )
     for bug in bugs:
+        if dry_run:
+            lp_bug_number = bug.web_link.split("/")[-1]
+            title = f"LP{lp_bug_number}: {bug.title}"
+            click.echo(f"Bug {click.style(title, fg='green')} will be migrated from {bug.web_link}")
+            continue
+
         issue = create_gh_issue(repo, bug, apply_labels=labels, issue_titles=issue_titles)
         if issue:
             comment = (
