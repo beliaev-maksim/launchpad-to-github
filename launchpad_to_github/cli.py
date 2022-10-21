@@ -43,6 +43,7 @@ cachedir = "~/.launchpadlib/cache/"
     help="Filter bugs by reporter username.",
 )
 @click.option("--gh-token", envvar="GH_TOKEN", help="GitHub API token")
+@click.option("--max-entries", type=int, help="Max limit of bugs to transfer.")
 @click.option("--dry-run", is_flag=True, help="Show which bugs will be migrated.")
 def migrate_bugs(
     gh_repo_name,
@@ -53,6 +54,7 @@ def migrate_bugs(
     filter_tag,
     filter_reporter,
     gh_token,
+    max_entries,
     dry_run,
 ):
     if not gh_token:
@@ -79,7 +81,7 @@ def migrate_bugs(
 
     bugs = construct_bugs_from_tasks(launchpad, project_bug_tasks)
 
-    issue_titles = [i.title for i in repo.get_issues()]
+    click.echo("-" * 70)
     click.echo(f"Start migrating bugs to {repo.html_url}")
     if dry_run:
         if change_lp_status != "null":
@@ -92,7 +94,12 @@ def migrate_bugs(
                 ),
                 fg="red",
             )
-    for bug in bugs:
+    issue_titles = [i.title for i in repo.get_issues()]
+    for i, bug in enumerate(bugs, start=1):
+        if i > max_entries:
+            click.echo(f"{click.style('Exit', fg='green')}. Maximum number of entries reached.")
+            break
+
         if dry_run:
             lp_bug_number = bug.web_link.split("/")[-1]
             title = f"LP{lp_bug_number}: {bug.title}"
