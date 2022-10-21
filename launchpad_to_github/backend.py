@@ -131,7 +131,7 @@ def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issu
     print(f"Issue #{issue.number} was created")
 
     if len(bug.messages) >= 2:
-        body = "This thread was migrated from launchpad.net\n"
+        body = ""
 
         for msg in bug.messages[1:]:
             if not msg.content:
@@ -139,5 +139,10 @@ def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issu
 
             date = msg.date_created.strftime("%Y-%m-%d %H:%M:%S")
             body += f"##### https://launchpad.net/~{msg.author} wrote on {date}:\n{msg.content}\n\n"
+
+        if not body:
+            return
+
+        body = "This thread was migrated from launchpad.net\n" + body
 
         issue.create_comment(body=body)

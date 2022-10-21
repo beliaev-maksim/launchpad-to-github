@@ -25,7 +25,11 @@ cachedir = "~/.launchpadlib/cache/"
 @click.option(
     "--filter-tag",
     "-t",
-    help="Filter bugs by tag. Repeat for multiple '-t tag1 -t tag2'",
+    help=(
+        "Filter bugs by tag. "
+        "Find bugs where one of the tags is specified (OR logic). "
+        "Repeat for multiple '-t tag1 -t tag2'"
+    ),
     multiple=True,
 )
 @click.option(
