@@ -1,5 +1,5 @@
 gh_issue_template = """
-This issue was migrated from https://launchpad.net/
+This issue was migrated from {bug_link}
 
 ## Summary
 | Status 	| Created on 	| Heat 	| Importance 	| Security related 	|
@@ -15,7 +15,5 @@ This issue was migrated from https://launchpad.net/
 
 Tags:
 {tags}
-
-Original bug: {bug_link}
 
 """
