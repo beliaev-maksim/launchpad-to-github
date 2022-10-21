@@ -18,8 +18,6 @@ LP_STATUSES = (
     "Fix Committed",
     "Fix Released",
     "Does Not Exist",
-    "Incomplete (with response)",
-    "Incomplete (without response)",
 )
 
 
@@ -31,6 +29,15 @@ def get_lp_bug(launchpad, bug_number):
         return launchpad.bugs[bug_number]
     except KeyError:
         print("Couldn't find the Launchpad bug {}".format(bug_number))
+
+
+def add_comment_to_lp_bug(lp_bug, comment):
+    lp_bug.newMessage(content=comment)
+
+
+def close_lp_bug_task(task, status):
+    task.status = status
+    task.lp_save()
 
 
 def get_lp_project_bug_tasks(launchpad, project_name, statuses=LP_STATUSES, tags=(), reporter=""):
@@ -141,8 +148,10 @@ def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issu
             body += f"##### https://launchpad.net/~{msg.author} wrote on {date}:\n{msg.content}\n\n"
 
         if not body:
-            return
+            return issue
 
         body = "This thread was migrated from launchpad.net\n" + body
 
         issue.create_comment(body=body)
+
+    return issue

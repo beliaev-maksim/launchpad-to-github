@@ -20,7 +20,8 @@ dependencies = [
 # development dependencies
 [project.optional-dependencies]
 test = [
-    "pre-commit"
+    "pre-commit",
+    "pytest"
 ]
 
 deploy = [
