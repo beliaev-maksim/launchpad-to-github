@@ -68,7 +68,12 @@ def migrate_bugs(
         )
 
     github = Github(gh_token)
-    launchpad = Launchpad.login_with("migration lp-gh", "production", cachedir, version="devel")
+    if dry_run:
+        launchpad = Launchpad.login_anonymously(
+            "migration lp-gh", "production", cachedir, version="devel"
+        )
+    else:
+        launchpad = Launchpad.login_with("migration lp-gh", "production", cachedir, version="devel")
     repo = github.get_repo(gh_repo_name)
 
     project_bug_tasks = get_lp_project_bug_tasks(
