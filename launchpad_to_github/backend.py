@@ -1,4 +1,3 @@
-import click
 from github.Repository import Repository
 
 from launchpad_to_github.gh_issue_template import gh_issue_template
@@ -91,15 +90,9 @@ def construct_bugs_from_tasks(launchpad, lp_tasks):
 
 
 def check_labels(repo: Repository):
-    labels = repo.get_labels()
-    if "Important" not in labels:
-        raise ValueError("Please add label 'Important' to repository")
-
-    if "Security" not in labels:
-        raise ValueError("Please add label 'Security' to repository")
-
-    if "FromLaunchpad" not in labels:
-        raise ValueError("Please add label 'FromLaunchpad' to repository")
+    labels = [label.name for label in repo.get_labels()]
+    if "Important" not in labels or "Security" not in labels or "FromLaunchpad" not in labels:
+        raise ValueError("Please add label 'Important', 'Security', 'FromLaunchpad' to repository")
 
 
 def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issue_titles=list[str]):
@@ -108,7 +101,7 @@ def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issu
     lp_bug_number = bug.web_link.split("/")[-1]
     title = f"LP{lp_bug_number}: {bug.title}"
     if any([f"LP{lp_bug_number}" in title for title in issue_titles]):
-        click.echo(f"Bug with number LP{lp_bug_number} is already added.")
+        print(f"Bug with number LP{lp_bug_number} is already added.")
         return
 
     body = gh_issue_template.format(
@@ -135,6 +128,7 @@ def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issu
         labels.append("FromLaunchpad")
 
     issue = repo.create_issue(title, body=body, labels=labels)
+    print(f"Issue #{issue.number} was created")
 
     if len(bug.messages) >= 2:
         body = "This thread was migrated from launchpad.net\n"
