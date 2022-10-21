@@ -98,8 +98,17 @@ def construct_bugs_from_tasks(launchpad, lp_tasks):
 
 def check_labels(repo: Repository):
     labels = [label.name for label in repo.get_labels()]
-    if "Important" not in labels or "Security" not in labels or "FromLaunchpad" not in labels:
-        raise ValueError("Please add label 'Important', 'Security', 'FromLaunchpad' to repository")
+    if "Security" not in labels:
+        repo.create_label("Security", color="ed2226")
+
+    if "Importance: Critical" not in labels:
+        repo.create_label("Importance: Critical", color="f95770")
+
+    if "Importance: High" not in labels:
+        repo.create_label("Importance: High", color="dd4995")
+
+    if "FromLaunchpad" not in labels:
+        repo.create_label("Critical", color="00ffff")
 
 
 def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issue_titles=list[str]):
@@ -126,8 +135,11 @@ def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issu
     labels = []
     if apply_labels:
         check_labels(repo)
-        if bug.importance.lower() in ["high", "critical"]:
-            labels.append("Important")
+        if bug.importance.lower() == "critical":
+            labels.append("Importance: Critical")
+
+        if bug.importance.lower() == "high":
+            labels.append("Importance: High")
 
         if bug.security_related:
             labels.append("Security")
