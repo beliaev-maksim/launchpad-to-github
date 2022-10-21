@@ -81,7 +81,9 @@ def migrate_bugs(
     for bug in bugs:
         issue = create_gh_issue(repo, bug, apply_labels=labels, issue_titles=issue_titles)
         if issue:
-            comment = f"Bug was migrated to GitHub: {issue.url}.\nBug is no more monitored here."
+            comment = (
+                f"Bug was migrated to GitHub: {issue.html_url}.\nBug is no more monitored here."
+            )
             add_comment_to_lp_bug(bug.original_bug, comment)
             if change_lp_status != "null":
                 close_lp_bug_task(bug.original_task, change_lp_status)
