@@ -98,6 +98,9 @@ def construct_bugs_from_tasks(launchpad, lp_tasks):
 
 def check_labels(repo: Repository):
     labels = [label.name for label in repo.get_labels()]
+    if "bug" not in labels:
+        repo.create_label("bug", color="d73a4a")
+
     if "Security" not in labels:
         repo.create_label("Security", color="ed2226")
 
@@ -145,6 +148,7 @@ def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issu
             labels.append("Security")
 
         labels.append("FromLaunchpad")
+        labels.append("bug")
 
     issue = repo.create_issue(title, body=body, labels=labels)
     print(f"Issue #{issue.number} was created")
