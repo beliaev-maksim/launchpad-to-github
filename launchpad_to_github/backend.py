@@ -1,3 +1,4 @@
+from github.MainClass import Github
 from github.Repository import Repository
 
 from launchpad_to_github.gh_issue_template import gh_issue_template
@@ -97,78 +98,103 @@ def construct_bugs_from_tasks(launchpad, lp_tasks):
         yield bug
 
 
-def check_labels(repo: Repository):
-    labels = [label.name for label in repo.get_labels()]
-    if "bug" not in labels:
-        repo.create_label("bug", color="d73a4a")
+class GitHubProject:
+    """This class is used in order to decrease GH API load.
 
-    if "Security" not in labels:
-        repo.create_label("Security", color="ed2226")
+    https://docs.github.com/rest/overview/resources-in-the-rest-api#secondary-rate-limits
+    """
 
-    if "Importance: Critical" not in labels:
-        repo.create_label("Importance: Critical", color="f95770")
+    def __init__(self, gh_token: str, gh_repo_name: str):
+        self.github = Github(gh_token)
+        self.repo: Repository = self.github.get_repo(gh_repo_name)
+        self._labels_exist = False
+        self._issue_titles = []
 
-    if "Importance: High" not in labels:
-        repo.create_label("Importance: High", color="dd4995")
+    @property
+    def issue_titles(self) -> list[str]:
+        if not self._issue_titles:
+            self._issue_titles = [i.title for i in self.repo.get_issues()]
 
-    if "FromLaunchpad" not in labels:
-        repo.create_label("Critical", color="00ffff")
+        return self._issue_titles
 
+    def check_labels(self):
+        if self._labels_exist:
+            return
 
-def create_gh_issue(repo: Repository, bug: Bug, apply_labels: bool = False, issue_titles=list[str]):
-    attachments = "\n".join([f"[{att.name}]({att.url})" for att in bug.attachments])
+        labels = [label.name for label in self.repo.get_labels()]
+        if "bug" not in labels:
+            self.repo.create_label("bug", color="d73a4a")
 
-    lp_bug_number = bug.web_link.split("/")[-1]
-    title = f"LP{lp_bug_number}: {bug.title}"
-    if any([f"LP{lp_bug_number}" in title for title in issue_titles]):
-        print(f"Bug with number LP{lp_bug_number} is already added.")
-        return
+        if "Security" not in labels:
+            self.repo.create_label("Security", color="ed2226")
 
-    body = gh_issue_template.format(
-        status=bug.status,
-        created_on=bug.date_created.strftime("%Y-%m-%d %H:%M:%S"),
-        heat=bug.heat,
-        importance=bug.importance,
-        security=bug.security_related,
-        description=bug.description,
-        attachments=attachments or "No attachments",
-        tags=bug.tags,
-        bug_link=bug.web_link,
-    )
+        if "Importance: Critical" not in labels:
+            self.repo.create_label("Importance: Critical", color="f95770")
 
-    labels = []
-    if apply_labels:
-        check_labels(repo)
-        if bug.importance.lower() == "critical":
-            labels.append("Importance: Critical")
+        if "Importance: High" not in labels:
+            self.repo.create_label("Importance: High", color="dd4995")
 
-        if bug.importance.lower() == "high":
-            labels.append("Importance: High")
+        if "FromLaunchpad" not in labels:
+            self.repo.create_label("Critical", color="00ffff")
 
-        if bug.security_related:
-            labels.append("Security")
+        self._labels_exist = True
 
-        labels.append("FromLaunchpad")
-        labels.append("bug")
+    def create_gh_issue(self, bug: Bug, apply_labels: bool = False):
+        attachments = "\n".join([f"[{att.name}]({att.url})" for att in bug.attachments])
 
-    issue = repo.create_issue(title, body=body, labels=labels)
-    print(f"Issue #{issue.number} was created")
+        lp_bug_number = bug.web_link.split("/")[-1]
+        title = f"LP{lp_bug_number}: {bug.title}"
+        if any([f"LP{lp_bug_number}" in title for title in self.issue_titles]):
+            print(f"Bug with number LP{lp_bug_number} is already added.")
+            return
 
-    if len(bug.messages) >= 2:
-        body = ""
+        body = gh_issue_template.format(
+            status=bug.status,
+            created_on=bug.date_created.strftime("%Y-%m-%d %H:%M:%S"),
+            heat=bug.heat,
+            importance=bug.importance,
+            security=bug.security_related,
+            description=bug.description,
+            attachments=attachments or "No attachments",
+            tags=bug.tags,
+            bug_link=bug.web_link,
+        )
 
-        for msg in bug.messages[1:]:
-            if not msg.content:
-                continue
+        labels = []
+        if apply_labels:
+            self.check_labels()
+            if bug.importance.lower() == "critical":
+                labels.append("Importance: Critical")
 
-            date = msg.date_created.strftime("%Y-%m-%d %H:%M:%S")
-            body += f"##### https://launchpad.net/~{msg.author} wrote on {date}:\n{msg.content}\n\n"
+            if bug.importance.lower() == "high":
+                labels.append("Importance: High")
 
-        if not body:
-            return issue
+            if bug.security_related:
+                labels.append("Security")
 
-        body = "This thread was migrated from launchpad.net\n" + body
+            labels.append("FromLaunchpad")
+            labels.append("bug")
 
-        issue.create_comment(body=body)
+        issue = self.repo.create_issue(title, body=body, labels=labels)
+        print(f"Issue #{issue.number} was created. URL: {issue.html_url}")
 
-    return issue
+        if len(bug.messages) >= 2:
+            body = ""
+
+            for msg in bug.messages[1:]:
+                if not msg.content:
+                    continue
+
+                date = msg.date_created.strftime("%Y-%m-%d %H:%M:%S")
+                body += (
+                    f"##### https://launchpad.net/~{msg.author} wrote on {date}:\n{msg.content}\n\n"
+                )
+
+            if not body:
+                return issue
+
+            body = "This thread was migrated from launchpad.net\n" + body
+
+            issue.create_comment(body=body)
+
+        return issue

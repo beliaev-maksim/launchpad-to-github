@@ -1,12 +1,13 @@
+import time
+
 import click
-from github import Github
 from launchpadlib.launchpad import Launchpad
 
 from launchpad_to_github.backend import LP_STATUSES
+from launchpad_to_github.backend import GitHubProject
 from launchpad_to_github.backend import add_comment_to_lp_bug
 from launchpad_to_github.backend import close_lp_bug_task
 from launchpad_to_github.backend import construct_bugs_from_tasks
-from launchpad_to_github.backend import create_gh_issue
 from launchpad_to_github.backend import get_lp_project_bug_tasks
 
 cachedir = "~/.launchpadlib/cache/"
@@ -67,14 +68,12 @@ def migrate_bugs(
             f"--change-lp-status is wrong, must be 'null' or one of {', '.join(LP_STATUSES)}"
         )
 
-    github = Github(gh_token)
     if dry_run:
         launchpad = Launchpad.login_anonymously(
             "migration lp-gh", "production", cachedir, version="devel"
         )
     else:
         launchpad = Launchpad.login_with("migration lp-gh", "production", cachedir, version="devel")
-    repo = github.get_repo(gh_repo_name)
 
     project_bug_tasks = get_lp_project_bug_tasks(
         launchpad,
@@ -83,11 +82,12 @@ def migrate_bugs(
         tags=filter_tag,
         reporter=filter_reporter,
     )
-
     bugs = construct_bugs_from_tasks(launchpad, project_bug_tasks)
 
+    gh_project = GitHubProject(gh_token, gh_repo_name)
+
     click.echo("-" * 70)
-    click.echo(f"Start migrating bugs to {repo.html_url}")
+    click.echo(f"Start migrating bugs to {gh_project.repo.html_url}")
     if dry_run:
         if change_lp_status != "null":
             click.secho(f"Bugs will be closed with following status: {change_lp_status}", fg="red")
@@ -99,7 +99,6 @@ def migrate_bugs(
                 ),
                 fg="red",
             )
-    issue_titles = [i.title for i in repo.get_issues()]
     for i, bug in enumerate(bugs, start=1):
         if i > max_entries:
             click.echo(f"{click.style('Exit', fg='green')}. Maximum number of entries reached.")
@@ -111,7 +110,8 @@ def migrate_bugs(
             click.echo(f"Bug {click.style(title, fg='green')} will be migrated from {bug.web_link}")
             continue
 
-        issue = create_gh_issue(repo, bug, apply_labels=labels, issue_titles=issue_titles)
+        time.sleep(5)  # this sleep is intentional, otherwise GH API may block you
+        issue = gh_project.create_gh_issue(bug, apply_labels=labels)
         if issue:
             comment = (
                 f"Bug was migrated to GitHub: {issue.html_url}.\nBug is no more monitored here."
