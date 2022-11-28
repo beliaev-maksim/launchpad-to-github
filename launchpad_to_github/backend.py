@@ -72,6 +72,10 @@ def construct_bugs_from_tasks(launchpad, lp_tasks):
             for msg in lp_bug.messages
         ]
 
+        if lp_bug.private:
+            print(f"Bug is private, skipping: {lp_bug.web_link}")
+            continue
+
         bug = Bug(
             assignee_link=task.assignee_link,
             attachments=attachments,
