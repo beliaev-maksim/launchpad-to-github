@@ -56,7 +56,6 @@ def get_lp_project_bug_tasks(launchpad, project_name, statuses=LP_STATUSES, tags
 
 
 def construct_bugs_from_tasks(launchpad, lp_tasks):
-    bugs = []
     for task in lp_tasks:
         lp_bug = launchpad.load(task.bug_link)
         attachments_collection = lp_bug.attachments
@@ -91,9 +90,7 @@ def construct_bugs_from_tasks(launchpad, lp_tasks):
             original_task=task,
             original_bug=lp_bug,
         )
-        bugs.append(bug)
-
-    return bugs
+        yield bug
 
 
 def check_labels(repo: Repository):
